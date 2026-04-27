@@ -59,6 +59,8 @@
 
       .calendar-grid {
         gap: 0.25rem;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(7, minmax(0, 1fr));
       }
 
       .calendar-cell {
@@ -71,15 +73,11 @@
       }
 
       .activity-recovery {
-        background: #ef8f42;
-      }
-
-      .activity-commute {
-        background: #f3c58b;
+        background: #e9a386;
       }
 
       .activity-active {
-        background: #d65a1f;
+        background: #c94f1d;
       }
 
       .calendar-outside {

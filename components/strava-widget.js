@@ -44,19 +44,13 @@ function sportLabel(type) {
   return sportMeta[normalizedSport(type)]?.label ?? type ?? "Activity";
 }
 
-function calendarState(activities) {
-  if (!activities.length) {
-    return "none";
+function calendarState(date, dayActivities, activityDates) {
+  if (dayActivities.length) {
+    return "active";
   }
 
-  const allCommutes = activities.every((activity) => activity.category === "commute");
-  if (allCommutes) {
-    return "commute";
-  }
-
-  const movingTime = activities.reduce((total, activity) => total + activity.moving_time_min, 0);
-  const distance = activities.reduce((total, activity) => total + activity.distance_km, 0);
-  return movingTime >= 50 || distance >= 12 ? "active" : "recovery";
+  const previousDay = isoDate(addDays(date, -1));
+  return activityDates.has(previousDay) ? "recovery" : "none";
 }
 
 function renderCalendar(root, activities, asOf) {
@@ -67,6 +61,7 @@ function renderCalendar(root, activities, asOf) {
   const calendarEnd = endOfWeek(asOf);
   const weekCount = Math.round((calendarEnd - calendarStart) / dayMs / 7) + 1;
   const activityMap = new Map();
+  const activityDates = new Set(activities.map((activity) => activity.date));
 
   activities.forEach((activity) => {
     if (!activityMap.has(activity.date)) {
@@ -85,7 +80,7 @@ function renderCalendar(root, activities, asOf) {
     const cell = document.createElement("div");
     const inRange = date >= rangeStart && date <= asOf;
     const dayActivities = inRange ? activityMap.get(currentIso) ?? [] : [];
-    const state = calendarState(dayActivities);
+    const state = calendarState(date, dayActivities, activityDates);
 
     cell.className = `calendar-cell ${inRange ? `activity-${state}` : "calendar-outside"} ${
       dayActivities.length ? "cursor-pointer" : ""
@@ -274,10 +269,6 @@ class StravaWidget extends HTMLElement {
               <span class="inline-flex items-center gap-2">
                 <span class="h-3 w-3 rounded-sm activity-active"></span>
                 Active
-              </span>
-              <span class="inline-flex items-center gap-2">
-                <span class="h-3 w-3 rounded-sm activity-commute"></span>
-                Bike Commute
               </span>
             </div>
           </div>
