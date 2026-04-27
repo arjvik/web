@@ -1,0 +1,85 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: "7 7 * * *"
+    - cron: "7 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  schedule-check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+    steps:
+      - name: Decide whether this run is Pacific midnight
+        id: decide
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "schedule" ] || [ "$(TZ=America/Los_Angeles date +%H)" = "00" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: schedule-check
+    if: needs.schedule-check.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build static site
+        run: node scripts/build-site.mjs
+
+      - name: Fetch Strava activities
+        id: strava
+        run: node scripts/fetch-strava-activities.mjs --output dist/activities.json
+        env:
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+
+      - name: Persist rotated Strava refresh token
+        run: gh secret set STRAVA_REFRESH_TOKEN --repo "$GITHUB_REPOSITORY" < "${{ steps.strava.outputs.refresh_token_path }}"
+        env:
+          GH_TOKEN: ${{ secrets.GH_SECRET_ROTATOR_TOKEN }}
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -11,12 +11,37 @@ import {
   startOfYear,
 } from "./strava-utils.js";
 
+const sportMeta = {
+  Hike: { icon: "mountain", label: "Hiking" },
+  Ride: { icon: "bike", label: "Cycling" },
+  Run: { icon: "footprints", label: "Running" },
+  Swim: { icon: "waves", label: "Swimming" },
+  VirtualRide: { icon: "bike", label: "Cycling" },
+  VirtualRun: { icon: "footprints", label: "Running" },
+  Walk: { icon: "footprints", label: "Walking" },
+  WeightTraining: { icon: "dumbbell", label: "Strength" },
+};
+
+function normalizedSport(type) {
+  if (type === "VirtualRide") {
+    return "Ride";
+  }
+  if (type === "VirtualRun") {
+    return "Run";
+  }
+  return type;
+}
+
+function sportType(activity) {
+  return normalizedSport(activity.sport ?? activity.type);
+}
+
 function activityIcon(type) {
-  return type === "Ride" ? "bike" : "footprints";
+  return sportMeta[normalizedSport(type)]?.icon ?? "activity";
 }
 
 function sportLabel(type) {
-  return type === "Ride" ? "Cycling" : "Running";
+  return sportMeta[normalizedSport(type)]?.label ?? type ?? "Activity";
 }
 
 function calendarState(activities) {
@@ -114,7 +139,8 @@ function calculateWeekStreak(activities, asOf) {
 
 function calculateMostPopularSport(activities) {
   const counts = activities.reduce((totals, activity) => {
-    totals.set(activity.type, (totals.get(activity.type) ?? 0) + 1);
+    const type = sportType(activity);
+    totals.set(type, (totals.get(type) ?? 0) + 1);
     return totals;
   }, new Map());
 
@@ -161,7 +187,7 @@ function tooltipMarkup(date, activities) {
                   )}</p>
                 </div>
                 <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7e1d6] text-accent">
-                  <i data-lucide="${activityIcon(activity.type)}" class="h-4 w-4"></i>
+                  <i data-lucide="${activityIcon(sportType(activity))}" class="h-4 w-4"></i>
                 </span>
               </div>
               <div class="mt-3 grid grid-cols-2 gap-2">
