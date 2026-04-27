@@ -128,9 +128,12 @@ function currentYearActivities(activities, asOf) {
 
 function calculateWeekStreak(activities, asOf) {
   const activityWeeks = new Set(activities.map((activity) => isoDate(startOfWeek(localDate(activity.date)))));
+  const currentWeek = startOfWeek(asOf);
+  const hasActivityThisWeek = activityWeeks.has(isoDate(currentWeek));
+  const firstWeekToCount = hasActivityThisWeek ? currentWeek : addDays(currentWeek, -7);
   let streak = 0;
 
-  for (let week = startOfWeek(asOf); activityWeeks.has(isoDate(week)); week = addDays(week, -7)) {
+  for (let week = firstWeekToCount; activityWeeks.has(isoDate(week)); week = addDays(week, -7)) {
     streak += 1;
   }
 
