@@ -1,23 +1,15 @@
 const galleryItems = [
   {
-    src: "https://picsum.photos/seed/film-street-01/1200/720?grayscale",
-    alt: "Rainy city street in black and white",
+    src: "./assets/film1.jpg",
+    alt: "Film photograph 1",
   },
   {
-    src: "https://picsum.photos/seed/film-benches-02/1200/720?grayscale",
-    alt: "Park benches in black and white",
+    src: "./assets/film2.jpg",
+    alt: "Film photograph 2",
   },
   {
-    src: "https://picsum.photos/seed/film-crosswalk-03/1200/720?grayscale",
-    alt: "Crosswalk scene in black and white",
-  },
-  {
-    src: "https://picsum.photos/seed/film-window-04/1200/720?grayscale",
-    alt: "Person by a window in black and white",
-  },
-  {
-    src: "https://picsum.photos/seed/film-shore-05/1200/720?grayscale",
-    alt: "Quiet shoreline in black and white",
+    src: "./assets/film3.jpg",
+    alt: "Film photograph 3",
   },
 ];
 
@@ -84,7 +76,7 @@ class PhotoGallery extends HTMLElement {
         (item, index) => `
           <button type="button" data-gallery-index="${index}" aria-label="Show photograph ${index + 1}">
             <img
-              src="${item.src.replace("/1200/720", "/400/240")}"
+              src="${item.src}"
               alt=""
               class="aspect-[5/3] w-full rounded border border-transparent object-cover"
             />

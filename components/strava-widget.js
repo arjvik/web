@@ -162,11 +162,7 @@ function renderYearSummary(root, activities, asOf) {
 }
 
 function activityPhotos(activity) {
-  if (activity.photos?.length) {
-    return activity.photos;
-  }
-
-  return [1, 2].map((index) => `https://picsum.photos/seed/${activity.id}-${index}/240/160?grayscale`);
+  return activity.photos ?? [];
 }
 
 function tooltipMarkup(date, activities) {
@@ -188,20 +184,26 @@ function tooltipMarkup(date, activities) {
                   <i data-lucide="${activityIcon(sportType(activity))}" class="h-4 w-4"></i>
                 </span>
               </div>
-              <div class="mt-3 grid grid-cols-2 gap-2">
-                ${activityPhotos(activity)
-                  .slice(0, 2)
-                  .map(
-                    (photo) => `
-                      <img
-                        src="${photo}"
-                        alt=""
-                        class="aspect-[3/2] w-full rounded object-cover"
-                      />
-                    `,
-                  )
-                  .join("")}
-              </div>
+              ${
+                activityPhotos(activity).length
+                  ? `
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                      ${activityPhotos(activity)
+                        .slice(0, 2)
+                        .map(
+                          (photo) => `
+                            <img
+                              src="${photo}"
+                              alt=""
+                              class="aspect-[3/2] w-full rounded object-cover"
+                            />
+                          `,
+                        )
+                        .join("")}
+                    </div>
+                  `
+                  : ""
+              }
             </article>
           `,
         )

@@ -15,10 +15,11 @@ const refreshToken = requiredEnv("STRAVA_REFRESH_TOKEN");
 const token = await refreshAccessToken({ clientId, clientSecret, refreshToken });
 const athlete = await fetchAthlete(token.access_token);
 const activities = await fetchActivities(token.access_token);
+const enrichedActivities = await enrichActivitiesWithPhotos(token.access_token, activities);
 const payload = {
   asOf: isoDate(new Date()),
   profileUrl: `https://www.strava.com/athletes/${athlete.id}`,
-  activities: activities.map(normalizeActivity),
+  activities: enrichedActivities.map(normalizeActivity),
 };
 
 await mkdir(path.dirname(path.resolve(outputPath)), { recursive: true });
@@ -115,6 +116,40 @@ async function fetchAthlete(accessToken) {
   return response.json();
 }
 
+async function enrichActivitiesWithPhotos(accessToken, activities) {
+  return Promise.all(
+    activities.map(async (activity) => {
+      if (!activity.total_photo_count) {
+        return activity;
+      }
+
+      const detail = await fetchActivityDetail(accessToken, activity.id);
+      return {
+        ...activity,
+        photos: extractPhotoUrls(detail.photos),
+      };
+    }),
+  );
+}
+
+async function fetchActivityDetail(accessToken, activityId) {
+  const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Strava activity detail fetch failed for ${activityId}: HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function extractPhotoUrls(photos) {
+  return Object.values(photos?.primary?.urls ?? {}).filter(Boolean);
+}
+
 function normalizeActivity(activity) {
   return {
     id: String(activity.id),
@@ -126,6 +161,7 @@ function normalizeActivity(activity) {
     distance_km: round(activity.distance / 1000, 1),
     moving_time_min: Math.round(activity.moving_time / 60),
     elevation_m: Math.round(activity.total_elevation_gain ?? 0),
+    photos: activity.photos ?? [],
   };
 }
 
