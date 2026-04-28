@@ -147,7 +147,14 @@ async function fetchActivityDetail(accessToken, activityId) {
 }
 
 function extractPhotoUrls(photos) {
-  return Object.values(photos?.primary?.urls ?? {}).filter(Boolean);
+  const primaryUrls = photos?.primary?.urls ?? {};
+  const preferredUrl =
+    primaryUrls["600"] ??
+    primaryUrls["300"] ??
+    primaryUrls["100"] ??
+    Object.values(primaryUrls).find(Boolean);
+
+  return preferredUrl ? [preferredUrl] : [];
 }
 
 function normalizeActivity(activity) {
@@ -162,6 +169,7 @@ function normalizeActivity(activity) {
     moving_time_min: Math.round(activity.moving_time / 60),
     elevation_m: Math.round(activity.total_elevation_gain ?? 0),
     photos: activity.photos ?? [],
+    map_polyline: activity.map?.summary_polyline ?? activity.map?.polyline ?? "",
   };
 }
 

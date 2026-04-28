@@ -165,6 +165,75 @@ function activityPhotos(activity) {
   return activity.photos ?? [];
 }
 
+function decodePolyline(polyline) {
+  let index = 0;
+  let latitude = 0;
+  let longitude = 0;
+  const points = [];
+
+  while (index < polyline.length) {
+    let shift = 0;
+    let result = 0;
+    let byte;
+
+    do {
+      byte = polyline.charCodeAt(index) - 63;
+      index += 1;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    latitude += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = polyline.charCodeAt(index) - 63;
+      index += 1;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    longitude += result & 1 ? ~(result >> 1) : result >> 1;
+    points.push([latitude / 1e5, longitude / 1e5]);
+  }
+
+  return points;
+}
+
+function activityMapSvg(activity) {
+  if (!activity.map_polyline) {
+    return "";
+  }
+
+  const points = decodePolyline(activity.map_polyline);
+  if (points.length < 2) {
+    return "";
+  }
+
+  const latitudes = points.map(([latitude]) => latitude);
+  const longitudes = points.map(([, longitude]) => longitude);
+  const minLatitude = Math.min(...latitudes);
+  const maxLatitude = Math.max(...latitudes);
+  const minLongitude = Math.min(...longitudes);
+  const maxLongitude = Math.max(...longitudes);
+  const latitudeSpan = maxLatitude - minLatitude || 1;
+  const longitudeSpan = maxLongitude - minLongitude || 1;
+  const path = points
+    .map(([latitude, longitude], index) => {
+      const x = ((longitude - minLongitude) / longitudeSpan) * 220 + 10;
+      const y = 150 - ((latitude - minLatitude) / latitudeSpan) * 130 + 10;
+      return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return `
+    <svg viewBox="0 0 240 170" role="img" aria-label="Route map" class="mt-3 aspect-[8/5] w-full rounded bg-[#f4ede3]">
+      <path d="${path}" fill="none" stroke="#c94f1d" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" />
+    </svg>
+  `;
+}
+
 function tooltipMarkup(date, activities) {
   return `
     <div class="mb-3 text-xs font-medium uppercase text-muted">${formatDate(date)}</div>
@@ -204,6 +273,7 @@ function tooltipMarkup(date, activities) {
                   `
                   : ""
               }
+              ${activityMapSvg(activity)}
             </article>
           `,
         )
@@ -295,7 +365,7 @@ class StravaWidget extends HTMLElement {
         </div>
         <div
           data-activity-tooltip
-          class="pointer-events-none absolute z-20 hidden w-72 rounded-md border border-line bg-[#fffaf4] p-4 shadow-soft"
+          class="pointer-events-none fixed z-20 hidden w-72 rounded-md border border-line bg-[#fffaf4] p-4 shadow-soft"
         ></div>
       </section>
     `;
@@ -307,7 +377,10 @@ class StravaWidget extends HTMLElement {
 
   async loadActivities() {
     try {
-      const response = await fetch("./activities.json");
+      let response = await fetch("./activities.json");
+      if (response.status === 404) {
+        response = await fetch("./activities.mock.json");
+      }
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -373,16 +446,18 @@ class StravaWidget extends HTMLElement {
 
     tooltip.innerHTML = tooltipMarkup(cell.dataset.date, activities);
     tooltip.classList.remove("hidden");
-    const sectionRect = this.querySelector("section").getBoundingClientRect();
     const cellRect = cell.getBoundingClientRect();
     const tooltipRect = tooltip.getBoundingClientRect();
-    const centeredLeft = cellRect.left - sectionRect.left + cellRect.width / 2 - tooltipRect.width / 2;
-    const clampedLeft = Math.min(Math.max(centeredLeft, 12), sectionRect.width - tooltipRect.width - 12);
-    const preferredTop = cellRect.top - sectionRect.top - tooltipRect.height - 12;
-    const belowTop = cellRect.bottom - sectionRect.top + 12;
+    const centeredLeft = cellRect.left + cellRect.width / 2 - tooltipRect.width / 2;
+    const clampedLeft = Math.min(Math.max(centeredLeft, 12), window.innerWidth - tooltipRect.width - 12);
+    const spaceAbove = cellRect.top - 12;
+    const spaceBelow = window.innerHeight - cellRect.bottom - 12;
+    const placeAbove = spaceAbove >= tooltipRect.height || spaceAbove >= spaceBelow;
+    const preferredTop = placeAbove ? cellRect.top - tooltipRect.height - 12 : cellRect.bottom + 12;
+    const clampedTop = Math.min(Math.max(preferredTop, 12), window.innerHeight - tooltipRect.height - 12);
 
     tooltip.style.left = `${clampedLeft}px`;
-    tooltip.style.top = `${preferredTop >= 12 ? preferredTop : belowTop}px`;
+    tooltip.style.top = `${clampedTop}px`;
     lucide.createIcons();
   }
 
