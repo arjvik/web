@@ -1,33 +1,21 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const dayMs = 24 * 60 * 60 * 1000;
-const outputPath = readArgument("--output") ?? "activities.json";
-const tokenPath =
-  readArgument("--refresh-token-output") ??
-  path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), "next-strava-refresh-token");
 
-const clientId = requiredEnv("STRAVA_CLIENT_ID");
-const clientSecret = requiredEnv("STRAVA_CLIENT_SECRET");
-const refreshToken = requiredEnv("STRAVA_REFRESH_TOKEN");
+export async function fetchStravaActivities({ accessToken, outputPath = "activities.json" }) {
+  const athlete = await fetchAthlete(accessToken);
+  const activities = await fetchActivities(accessToken);
+  const enrichedActivities = await enrichActivitiesWithPhotos(accessToken, activities);
+  const payload = {
+    asOf: isoDate(new Date()),
+    profileUrl: `https://www.strava.com/athletes/${athlete.id}`,
+    activities: enrichedActivities.map(normalizeActivity),
+  };
 
-const token = await refreshAccessToken({ clientId, clientSecret, refreshToken });
-const athlete = await fetchAthlete(token.access_token);
-const activities = await fetchActivities(token.access_token);
-const enrichedActivities = await enrichActivitiesWithPhotos(token.access_token, activities);
-const payload = {
-  asOf: isoDate(new Date()),
-  profileUrl: `https://www.strava.com/athletes/${athlete.id}`,
-  activities: enrichedActivities.map(normalizeActivity),
-};
-
-await mkdir(path.dirname(path.resolve(outputPath)), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`);
-await writeFile(tokenPath, token.refresh_token, { mode: 0o600 });
-
-if (process.env.GITHUB_OUTPUT) {
-  await writeFile(process.env.GITHUB_OUTPUT, `refresh_token_path=${tokenPath}\n`, { flag: "a" });
+  await mkdir(path.dirname(path.resolve(outputPath)), { recursive: true });
+  await writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 function readArgument(name) {
@@ -45,27 +33,6 @@ function requiredEnv(name) {
 
 function isoDate(date) {
   return date.toISOString().slice(0, 10);
-}
-
-async function refreshAccessToken(credentials) {
-  const response = await fetch("https://www.strava.com/oauth/token", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret,
-      grant_type: "refresh_token",
-      refresh_token: credentials.refreshToken,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Strava token refresh failed: HTTP ${response.status}`);
-  }
-
-  return response.json();
 }
 
 async function fetchActivities(accessToken) {
@@ -124,9 +91,10 @@ async function enrichActivitiesWithPhotos(accessToken, activities) {
       }
 
       const detail = await fetchActivityDetail(accessToken, activity.id);
+      const photos = await fetchActivityPhotos(accessToken, activity.id);
       return {
         ...activity,
-        photos: extractPhotoUrls(detail.photos),
+        photos: extractPhotoUrls(photos, detail.photos),
       };
     }),
   );
@@ -146,8 +114,27 @@ async function fetchActivityDetail(accessToken, activityId) {
   return response.json();
 }
 
-function extractPhotoUrls(photos) {
-  const primaryUrls = photos?.primary?.urls ?? {};
+async function fetchActivityPhotos(accessToken, activityId) {
+  const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/photos?size=2048`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Strava activity photo fetch failed for ${activityId}: HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function extractPhotoUrls(photos, summary) {
+  const urls = photos.map((photo) => preferredPhotoUrl(photo.urls)).filter(Boolean);
+  if (urls.length) {
+    return urls;
+  }
+
+  const primaryUrls = summary?.primary?.urls ?? {};
   const preferredUrl =
     primaryUrls["600"] ??
     primaryUrls["300"] ??
@@ -155,6 +142,10 @@ function extractPhotoUrls(photos) {
     Object.values(primaryUrls).find(Boolean);
 
   return preferredUrl ? [preferredUrl] : [];
+}
+
+function preferredPhotoUrl(urls = {}) {
+  return urls["2048"] ?? urls["600"] ?? urls["300"] ?? urls["100"] ?? Object.values(urls).find(Boolean);
 }
 
 function normalizeActivity(activity) {
@@ -176,4 +167,11 @@ function normalizeActivity(activity) {
 function round(value, digits) {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await fetchStravaActivities({
+    accessToken: requiredEnv("STRAVA_ACCESS_TOKEN"),
+    outputPath: readArgument("--output") ?? "activities.json",
+  });
 }

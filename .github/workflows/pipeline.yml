@@ -28,12 +28,9 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build static site
-        run: node scripts/build-site.mjs
-
-      - name: Fetch Strava activities
+      - name: Refresh Strava token
         id: strava
-        run: node scripts/fetch-strava-activities.mjs --output dist/activities.json
+        run: node scripts/refresh-strava-token.mjs
         env:
           STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
@@ -43,6 +40,9 @@ jobs:
         run: gh secret set STRAVA_REFRESH_TOKEN --repo "$GITHUB_REPOSITORY" < "${{ steps.strava.outputs.refresh_token_path }}"
         env:
           GH_TOKEN: ${{ secrets.GH_SECRET_ROTATOR_TOKEN }}
+
+      - name: Build static site
+        run: node scripts/build-site.mjs
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
