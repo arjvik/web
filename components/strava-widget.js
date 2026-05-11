@@ -201,7 +201,7 @@ function decodePolyline(polyline) {
   return points;
 }
 
-function activityMapSvg(activity) {
+function activityMapMarkup(activity, activityIndex) {
   if (!activity.map_polyline) {
     return "";
   }
@@ -211,26 +211,13 @@ function activityMapSvg(activity) {
     return "";
   }
 
-  const latitudes = points.map(([latitude]) => latitude);
-  const longitudes = points.map(([, longitude]) => longitude);
-  const minLatitude = Math.min(...latitudes);
-  const maxLatitude = Math.max(...latitudes);
-  const minLongitude = Math.min(...longitudes);
-  const maxLongitude = Math.max(...longitudes);
-  const latitudeSpan = maxLatitude - minLatitude || 1;
-  const longitudeSpan = maxLongitude - minLongitude || 1;
-  const path = points
-    .map(([latitude, longitude], index) => {
-      const x = ((longitude - minLongitude) / longitudeSpan) * 220 + 10;
-      const y = 150 - ((latitude - minLatitude) / latitudeSpan) * 130 + 10;
-      return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-
   return `
-    <svg viewBox="0 0 240 170" role="img" aria-label="Route map" class="mt-3 aspect-[8/5] w-full rounded bg-[#f4ede3]">
-      <path d="${path}" fill="none" stroke="#c94f1d" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" />
-    </svg>
+    <div
+      data-activity-map="${activityIndex}"
+      class="activity-map mt-3 aspect-[8/5] w-full overflow-hidden rounded"
+      aria-label="Route map"
+      role="img"
+    ></div>
   `;
 }
 
@@ -240,7 +227,7 @@ function tooltipMarkup(date, activities) {
     <div class="space-y-4">
       ${activities
         .map(
-          (activity) => `
+          (activity, activityIndex) => `
             <article>
               <div class="flex items-start justify-between gap-3">
                 <div>
@@ -273,7 +260,7 @@ function tooltipMarkup(date, activities) {
                   `
                   : ""
               }
-              ${activityMapSvg(activity)}
+              ${activityMapMarkup(activity, activityIndex)}
             </article>
           `,
         )
@@ -444,6 +431,7 @@ class StravaWidget extends HTMLElement {
       return;
     }
 
+    this.clearTooltipMaps();
     tooltip.innerHTML = tooltipMarkup(cell.dataset.date, activities);
     tooltip.classList.remove("hidden");
     const cellRect = cell.getBoundingClientRect();
@@ -458,11 +446,58 @@ class StravaWidget extends HTMLElement {
 
     tooltip.style.left = `${clampedLeft}px`;
     tooltip.style.top = `${clampedTop}px`;
+    this.renderTooltipMaps(activities);
     lucide.createIcons();
   }
 
   hideTooltip() {
+    this.clearTooltipMaps();
     this.querySelector("[data-activity-tooltip]").classList.add("hidden");
+  }
+
+  renderTooltipMaps(activities) {
+    if (!window.L) {
+      return;
+    }
+
+    activities.forEach((activity, activityIndex) => {
+      const container = this.querySelector(`[data-activity-map="${activityIndex}"]`);
+      if (!container || !activity.map_polyline) {
+        return;
+      }
+
+      const points = decodePolyline(activity.map_polyline);
+      if (points.length < 2) {
+        return;
+      }
+
+      const map = L.map(container, {
+        attributionControl: true,
+        dragging: false,
+        keyboard: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        tap: false,
+        zoomControl: false,
+      });
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+      const route = L.polyline(points, {
+        color: "#c94f1d",
+        opacity: 0.95,
+        weight: 4,
+      }).addTo(map);
+      map.fitBounds(route.getBounds(), { padding: [18, 18] });
+      this.tooltipMaps ??= [];
+      this.tooltipMaps.push(map);
+    });
+  }
+
+  clearTooltipMaps() {
+    this.tooltipMaps?.forEach((map) => map.remove());
+    this.tooltipMaps = [];
   }
 }
 
