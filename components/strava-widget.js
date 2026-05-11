@@ -165,6 +165,10 @@ function activityPhotos(activity) {
   return activity.photos ?? [];
 }
 
+function activityUrl(activity) {
+  return `https://www.strava.com/activities/${activity.id}`;
+}
+
 function decodePolyline(polyline) {
   let index = 0;
   let latitude = 0;
@@ -212,12 +216,20 @@ function activityMapMarkup(activity, activityIndex) {
   }
 
   return `
-    <div
-      data-activity-map="${activityIndex}"
-      class="activity-map mt-3 aspect-[8/5] w-full overflow-hidden rounded"
-      aria-label="Route map"
-      role="img"
-    ></div>
+    <a
+      href="${activityUrl(activity)}"
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Open route on Strava"
+      class="mt-3 block"
+    >
+      <div
+        data-activity-map="${activityIndex}"
+        class="activity-map aspect-[8/5] w-full overflow-hidden rounded"
+        aria-label="Route map"
+        role="img"
+      ></div>
+    </a>
   `;
 }
 
