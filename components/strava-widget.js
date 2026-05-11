@@ -221,9 +221,25 @@ function activityMapMarkup(activity, activityIndex) {
   `;
 }
 
-function tooltipMarkup(date, activities) {
+function tooltipMarkup(date, activities, pinned) {
   return `
-    <div class="mb-3 text-xs font-medium uppercase text-muted">${formatDate(date)}</div>
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <div class="text-xs font-medium uppercase text-muted">${formatDate(date)}</div>
+      ${
+        pinned
+          ? `
+            <button
+              type="button"
+              data-close-tooltip
+              aria-label="Close activity details"
+              class="text-muted transition hover:text-ink"
+            >
+              <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+          `
+          : ""
+      }
+    </div>
     <div class="space-y-4">
       ${activities
         .map(
@@ -247,12 +263,26 @@ function tooltipMarkup(date, activities) {
                       ${activityPhotos(activity)
                         .slice(0, 2)
                         .map(
-                          (photo) => `
-                            <img
-                              src="${photo}"
-                              alt=""
-                              class="aspect-[3/2] w-full rounded object-cover"
-                            />
+                          (photo, photoIndex) => `
+                            ${
+                              pinned
+                                ? `
+                                  <button
+                                    type="button"
+                                    data-open-photo="${photoIndex}"
+                                    data-photo-activity="${activityIndex}"
+                                    aria-label="Open activity photo ${photoIndex + 1}"
+                                    class="block overflow-hidden rounded"
+                                  >
+                                `
+                                : ""
+                            }
+                              <img
+                                src="${photo}"
+                                alt=""
+                                class="aspect-[3/2] w-full rounded object-cover"
+                              />
+                            ${pinned ? "</button>" : ""}
                           `,
                         )
                         .join("")}
@@ -355,10 +385,49 @@ class StravaWidget extends HTMLElement {
           class="pointer-events-none fixed z-20 hidden w-72 rounded-md border border-line bg-[#fffaf4] p-4 shadow-soft"
         ></div>
       </section>
+      <div
+        data-photo-lightbox
+        class="fixed inset-0 z-30 hidden items-center justify-center bg-ink/90 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Activity photo viewer"
+      >
+        <button
+          type="button"
+          data-close-lightbox
+          aria-label="Close photo viewer"
+          class="absolute right-4 top-4 text-white/80 transition hover:text-white"
+        >
+          <i data-lucide="x" class="h-7 w-7"></i>
+        </button>
+        <button
+          type="button"
+          data-lightbox-prev
+          aria-label="Previous photo"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 transition hover:text-white"
+        >
+          <i data-lucide="chevron-left" class="h-8 w-8"></i>
+        </button>
+        <img
+          data-lightbox-image
+          src=""
+          alt=""
+          class="max-h-full max-w-full rounded-md object-contain"
+        />
+        <button
+          type="button"
+          data-lightbox-next
+          aria-label="Next photo"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 transition hover:text-white"
+        >
+          <i data-lucide="chevron-right" class="h-8 w-8"></i>
+        </button>
+      </div>
     `;
 
     this.loadActivities();
     this.bindTooltipEvents();
+    this.bindLightboxEvents();
     lucide.createIcons();
   }
 
@@ -396,43 +465,96 @@ class StravaWidget extends HTMLElement {
     const grid = this.querySelector("[data-calendar-grid]");
     grid.addEventListener("mouseover", (event) => {
       const cell = event.target.closest('[data-has-activity="true"]');
-      if (!cell) {
+      if (!cell || this.pinnedDate) {
         return;
       }
-      this.showTooltip(cell);
+      this.showTooltip(cell, false);
     });
     grid.addEventListener("focusin", (event) => {
+      const cell = event.target.closest('[data-has-activity="true"]');
+      if (!cell || this.pinnedDate) {
+        return;
+      }
+      this.showTooltip(cell, false);
+    });
+    grid.addEventListener("click", (event) => {
       const cell = event.target.closest('[data-has-activity="true"]');
       if (!cell) {
         return;
       }
-      this.showTooltip(cell);
+
+      event.stopPropagation();
+      this.showTooltip(cell, true);
     });
     grid.addEventListener("mouseout", (event) => {
       const previousCell = event.target.closest('[data-has-activity="true"]');
       const nextCell = event.relatedTarget?.closest?.('[data-has-activity="true"]');
-      if (previousCell && !nextCell) {
+      if (previousCell && !nextCell && !this.pinnedDate) {
         this.hideTooltip();
       }
     });
     grid.addEventListener("focusout", (event) => {
       const previousCell = event.target.closest('[data-has-activity="true"]');
       const nextCell = event.relatedTarget?.closest?.('[data-has-activity="true"]');
-      if (previousCell && !nextCell) {
+      if (previousCell && !nextCell && !this.pinnedDate) {
         this.hideTooltip();
+      }
+    });
+
+    this.querySelector("[data-activity-tooltip]").addEventListener("click", (event) => {
+      if (event.target.closest("[data-close-tooltip]")) {
+        this.hideTooltip();
+        return;
+      }
+
+      const photoButton = event.target.closest("[data-open-photo]");
+      if (!photoButton) {
+        return;
+      }
+
+      const activity = this.pinnedActivities?.[Number(photoButton.dataset.photoActivity)];
+      if (!activity) {
+        return;
+      }
+
+      this.openPhotoLightbox(activityPhotos(activity), Number(photoButton.dataset.openPhoto));
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!this.pinnedDate) {
+        return;
+      }
+
+      if (this.contains(event.target)) {
+        return;
+      }
+
+      this.hideTooltip();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (this.lightboxPhotos?.length) {
+          this.closePhotoLightbox();
+        } else if (this.pinnedDate) {
+          this.hideTooltip();
+        }
       }
     });
   }
 
-  showTooltip(cell) {
+  showTooltip(cell, pinned) {
     const tooltip = this.querySelector("[data-activity-tooltip]");
     const activities = this.activitiesByDate?.get(cell.dataset.date) ?? [];
     if (!activities.length) {
       return;
     }
 
+    this.pinnedDate = pinned ? cell.dataset.date : "";
+    this.pinnedActivities = pinned ? activities : [];
     this.clearTooltipMaps();
-    tooltip.innerHTML = tooltipMarkup(cell.dataset.date, activities);
+    tooltip.innerHTML = tooltipMarkup(cell.dataset.date, activities, pinned);
+    tooltip.classList.toggle("pointer-events-none", !pinned);
     tooltip.classList.remove("hidden");
     const cellRect = cell.getBoundingClientRect();
     const tooltipRect = tooltip.getBoundingClientRect();
@@ -452,7 +574,10 @@ class StravaWidget extends HTMLElement {
 
   hideTooltip() {
     this.clearTooltipMaps();
-    this.querySelector("[data-activity-tooltip]").classList.add("hidden");
+    this.pinnedDate = "";
+    this.pinnedActivities = [];
+    const tooltip = this.querySelector("[data-activity-tooltip]");
+    tooltip.classList.add("hidden", "pointer-events-none");
   }
 
   renderTooltipMaps(activities) {
@@ -498,6 +623,51 @@ class StravaWidget extends HTMLElement {
   clearTooltipMaps() {
     this.tooltipMaps?.forEach((map) => map.remove());
     this.tooltipMaps = [];
+  }
+
+  bindLightboxEvents() {
+    const lightbox = this.querySelector("[data-photo-lightbox]");
+    lightbox.addEventListener("click", (event) => {
+      if (event.target === lightbox || event.target.closest("[data-close-lightbox]")) {
+        this.closePhotoLightbox();
+      }
+    });
+    this.querySelector("[data-lightbox-prev]").addEventListener("click", () => {
+      this.showPhotoAt(this.lightboxIndex - 1);
+    });
+    this.querySelector("[data-lightbox-next]").addEventListener("click", () => {
+      this.showPhotoAt(this.lightboxIndex + 1);
+    });
+  }
+
+  openPhotoLightbox(photos, index) {
+    if (!photos.length) {
+      return;
+    }
+
+    this.lightboxPhotos = photos;
+    this.showPhotoAt(index);
+    const hasMultiplePhotos = photos.length > 1;
+    this.querySelector("[data-lightbox-prev]").classList.toggle("hidden", !hasMultiplePhotos);
+    this.querySelector("[data-lightbox-next]").classList.toggle("hidden", !hasMultiplePhotos);
+    this.querySelector("[data-photo-lightbox]").classList.remove("hidden");
+    this.querySelector("[data-photo-lightbox]").classList.add("flex");
+  }
+
+  closePhotoLightbox() {
+    this.lightboxPhotos = [];
+    const lightbox = this.querySelector("[data-photo-lightbox]");
+    lightbox.classList.add("hidden");
+    lightbox.classList.remove("flex");
+  }
+
+  showPhotoAt(index) {
+    if (!this.lightboxPhotos?.length) {
+      return;
+    }
+
+    this.lightboxIndex = (index + this.lightboxPhotos.length) % this.lightboxPhotos.length;
+    this.querySelector("[data-lightbox-image]").src = this.lightboxPhotos[this.lightboxIndex];
   }
 }
 
