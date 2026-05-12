@@ -29,8 +29,8 @@ export function startOfYear(date) {
   return new Date(date.getFullYear(), 0, 1, 12);
 }
 
-export function formatDistance(value) {
-  return `${value.toFixed(1)} km`;
+export function formatDistance(kilometers) {
+  return `${(kilometers * 0.621371).toFixed(1)} mi`;
 }
 
 export function formatDuration(totalMinutes) {
