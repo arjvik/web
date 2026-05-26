@@ -52,6 +52,7 @@
 
       body {
         letter-spacing: 0;
+        overflow-x: hidden;
       }
 
       .calendar-grid,
@@ -60,11 +61,12 @@
       }
 
       .calendar-shell {
-        min-width: 31rem;
+        min-width: 0;
+        width: 100%;
       }
 
       .calendar-grid {
-        gap: 0.25rem;
+        gap: clamp(0.14rem, 0.7vw, 0.25rem);
         grid-auto-flow: column;
         grid-template-rows: repeat(7, minmax(0, 1fr));
       }
@@ -72,6 +74,7 @@
       .calendar-cell {
         aspect-ratio: 1 / 1;
         border-radius: 0.125rem;
+        min-width: 0;
       }
 
       .activity-none {
@@ -94,6 +97,28 @@
         transition: opacity 180ms ease;
       }
 
+      .gallery-nav {
+        color: #211d18;
+        position: absolute;
+        top: 50%;
+        transition: color 150ms ease;
+        z-index: 10;
+      }
+
+      .gallery-nav:hover {
+        color: #dd5d2a;
+      }
+
+      .gallery-nav-prev {
+        left: -0.75rem;
+        transform: translate(-100%, -50%);
+      }
+
+      .gallery-nav-next {
+        right: -0.75rem;
+        transform: translate(100%, -50%);
+      }
+
       .activity-layout {
         display: grid;
         gap: 1.5rem;
@@ -108,8 +133,34 @@
       }
 
       @media (max-width: 640px) {
+        .gallery-nav {
+          align-items: center;
+          backdrop-filter: blur(8px);
+          background: rgba(247, 243, 236, 0.82);
+          border-radius: 9999px;
+          box-shadow: 0 16px 40px rgba(33, 29, 24, 0.08);
+          display: flex;
+          height: 2.5rem;
+          justify-content: center;
+          width: 2.5rem;
+        }
+
+        .gallery-nav-prev {
+          left: 0.5rem;
+          transform: translateY(-50%);
+        }
+
+        .gallery-nav-next {
+          right: 0.5rem;
+          transform: translateY(-50%);
+        }
+
         .calendar-grid {
-          gap: 0.18rem;
+          gap: 0.16rem;
+        }
+
+        .calendar-cell {
+          border-radius: 0.1rem;
         }
       }
 
@@ -119,25 +170,22 @@
           align-items: start;
         }
 
-        .calendar-shell {
-          min-width: 0;
-        }
       }
     </style>
   </head>
   <body class="bg-paper font-sans text-ink">
-    <main class="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 pb-10 pt-8 sm:px-8 lg:px-10">
+    <main class="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-8 lg:px-10">
       <header class="flex flex-col items-center text-center">
         <img
           src="./assets/portrait.jpg"
           alt="Portrait of Arjun Vikram"
-          class="h-44 w-44 rounded-[1.35rem] border border-line object-cover shadow-soft sm:h-52 sm:w-52"
+          class="h-36 w-36 rounded-[1.1rem] border border-line object-cover shadow-soft sm:h-52 sm:w-52 sm:rounded-[1.35rem]"
         />
-        <h1 class="mt-5 font-serif text-4xl font-medium tracking-normal sm:text-5xl">
+        <h1 class="mt-5 font-serif text-[2.6rem] font-medium leading-none tracking-normal sm:text-5xl">
           Arjun Vikram
         </h1>
 
-        <nav aria-label="Primary" class="mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm">
+        <nav aria-label="Primary" class="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm sm:mt-6">
           <a class="transition hover:text-accent" href="#photography">Photography</a>
           <a class="transition hover:text-accent" href="#activities">Activities</a>
         </nav>

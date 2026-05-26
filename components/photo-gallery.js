@@ -69,28 +69,28 @@ class PhotoGallery extends HTMLElement {
 
   connectedCallback() {
     this.innerHTML = `
-      <div class="relative">
+      <div class="relative mx-auto w-fit max-w-full">
         <button
           type="button"
           data-gallery-prev
           aria-label="Previous photograph"
-          class="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-ink transition hover:text-accent"
+          class="gallery-nav gallery-nav-prev"
         >
           <i data-lucide="chevron-left" class="h-7 w-7"></i>
         </button>
 
-        <figure class="overflow-hidden rounded-md border border-line bg-white/60 shadow-soft">
+        <figure class="overflow-hidden rounded-md border border-line shadow-soft">
           <button
             type="button"
             data-open-gallery-lightbox
             aria-label="Open current photograph fullscreen"
-            class="block w-full cursor-zoom-in"
+            class="block cursor-zoom-in touch-manipulation"
           >
             <img
               data-gallery-hero
               src="${galleryItems[0].src}"
               alt="${galleryItems[0].alt}"
-              class="gallery-frame aspect-[5/2.6] w-full object-cover"
+              class="gallery-frame block max-h-[70svh] max-w-full object-contain sm:max-h-[min(70vh,42rem)]"
             />
           </button>
         </figure>
@@ -99,18 +99,18 @@ class PhotoGallery extends HTMLElement {
           type="button"
           data-gallery-next
           aria-label="Next photograph"
-          class="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 text-ink transition hover:text-accent"
+          class="gallery-nav gallery-nav-next"
         >
           <i data-lucide="chevron-right" class="h-7 w-7"></i>
         </button>
       </div>
 
-      <p class="mt-2 text-right text-xs tracking-[0.08em] text-muted">Nikon FE2, 35mm</p>
-      <div class="mt-3 grid grid-cols-5 gap-2 sm:gap-3" data-gallery-thumbnails></div>
-      <div class="mt-4 flex items-center justify-center gap-3" data-gallery-dots aria-label="Gallery pagination"></div>
+      <p class="mt-2 text-right text-[0.68rem] tracking-[0.08em] text-muted sm:text-xs">Nikon FE2, 35mm</p>
+      <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3" data-gallery-thumbnails></div>
+      <div class="mt-4 flex items-center justify-center gap-2.5 sm:gap-3" data-gallery-dots aria-label="Gallery pagination"></div>
       <div
         data-gallery-lightbox
-        class="fixed inset-0 z-30 hidden items-center justify-center bg-ink/90 p-4"
+        class="fixed inset-0 z-40 hidden items-center justify-center bg-ink/95 p-3 sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-label="Photo viewer"
@@ -119,7 +119,7 @@ class PhotoGallery extends HTMLElement {
           type="button"
           data-close-gallery-lightbox
           aria-label="Close photo viewer"
-          class="absolute right-4 top-4 text-white/80 transition hover:text-white"
+          class="absolute right-3 top-3 text-white/80 transition hover:text-white sm:right-4 sm:top-4"
         >
           <i data-lucide="x" class="h-7 w-7"></i>
         </button>
@@ -127,16 +127,16 @@ class PhotoGallery extends HTMLElement {
           type="button"
           data-gallery-lightbox-prev
           aria-label="Previous photo"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 transition hover:text-white"
+          class="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-ink/45 text-white/85 backdrop-blur transition hover:text-white sm:left-4"
         >
           <i data-lucide="chevron-left" class="h-8 w-8"></i>
         </button>
-        <figure class="flex max-h-full max-w-full flex-col items-center gap-3">
+        <figure class="flex max-h-full max-w-[calc(100vw-1.5rem)] flex-col items-center gap-3 sm:max-w-full">
           <img
             data-gallery-lightbox-image
             src=""
             alt=""
-            class="max-h-[calc(100vh-6rem)] max-w-full rounded-md object-contain"
+            class="max-h-[calc(100svh-7rem)] max-w-full rounded-md object-contain sm:max-h-[calc(100vh-6rem)]"
           />
           <figcaption
             data-gallery-lightbox-caption
@@ -147,7 +147,7 @@ class PhotoGallery extends HTMLElement {
           type="button"
           data-gallery-lightbox-next
           aria-label="Next photo"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 transition hover:text-white"
+          class="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-ink/45 text-white/85 backdrop-blur transition hover:text-white sm:right-4"
         >
           <i data-lucide="chevron-right" class="h-8 w-8"></i>
         </button>
@@ -184,7 +184,7 @@ class PhotoGallery extends HTMLElement {
             <img
               src="${item.src}"
               alt=""
-              class="aspect-[5/3] w-full rounded border border-transparent object-cover"
+              class="aspect-[4/3] w-full rounded border border-transparent object-contain sm:aspect-[5/3]"
             />
           </button>
         `,

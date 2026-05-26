@@ -325,21 +325,24 @@ function renderActivityError(root) {
 class StravaWidget extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
-      <section class="relative rounded-lg border border-line bg-[#fbf8f3] px-5 py-4 shadow-soft sm:px-6">
-        <div class="flex items-center justify-between gap-4 border-b border-line pb-3">
-          <div class="flex items-center gap-3">
-            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-accent text-accent">
+      <section class="relative rounded-md border border-line bg-[#fbf8f3] px-4 py-4 shadow-soft sm:rounded-lg sm:px-6">
+        <div class="flex items-center justify-between gap-3 border-b border-line pb-3 sm:gap-4">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent text-accent">
               <i data-lucide="mountain" class="h-4 w-4"></i>
             </span>
-            <h2 class="font-serif text-xl font-medium sm:text-[1.35rem]">Activity (Strava)</h2>
+            <h2 class="min-w-0 truncate font-serif text-base font-medium min-[380px]:text-lg sm:text-[1.35rem]">
+              Activity (Strava)
+            </h2>
           </div>
 
           <a
             data-strava-link
-            class="inline-flex items-center gap-2 text-sm font-medium text-accent transition hover:text-ink"
+            class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-accent transition hover:text-ink min-[380px]:gap-2 min-[380px]:text-sm"
             href="#"
           >
-            View on Strava
+            <span class="hidden min-[380px]:inline">View on Strava</span>
+            <span class="min-[380px]:hidden">Strava</span>
             <i data-lucide="arrow-right" class="h-4 w-4"></i>
           </a>
         </div>
@@ -347,9 +350,9 @@ class StravaWidget extends HTMLElement {
         <div class="activity-layout mt-4">
           <div>
             <p class="text-xs font-medium uppercase text-muted">Activity Calendar</p>
-            <div class="mt-3 overflow-x-auto pb-1">
-              <div class="calendar-shell grid grid-cols-[1rem_minmax(0,1fr)] gap-3">
-                <div class="grid grid-rows-7 gap-1 pt-5 text-[0.65rem] uppercase text-muted">
+            <div class="mt-3 pb-1">
+              <div class="calendar-shell grid grid-cols-[0.75rem_minmax(0,1fr)] gap-2 sm:grid-cols-[1rem_minmax(0,1fr)] sm:gap-3">
+                <div class="grid grid-rows-7 gap-[0.16rem] pt-5 text-[0.6rem] uppercase text-muted sm:gap-1 sm:text-[0.65rem]">
                   <span>M</span>
                   <span>T</span>
                   <span>W</span>
@@ -360,13 +363,13 @@ class StravaWidget extends HTMLElement {
                 </div>
 
                 <div class="min-w-0">
-                  <div data-calendar-months class="calendar-months mb-2 min-h-3 text-[0.65rem] uppercase text-muted"></div>
+                  <div data-calendar-months class="calendar-months mb-2 min-h-3 text-[0.6rem] uppercase text-muted sm:text-[0.65rem]"></div>
                   <div data-calendar-grid class="calendar-grid"></div>
                 </div>
               </div>
             </div>
 
-            <div class="mt-5 flex flex-wrap items-center gap-x-8 gap-y-2 text-xs text-ink">
+            <div class="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-xs text-ink sm:mt-5">
               <span class="inline-flex items-center gap-2">
                 <span class="h-3 w-3 rounded-sm activity-active"></span>
                 Active
@@ -394,12 +397,12 @@ class StravaWidget extends HTMLElement {
         </div>
         <div
           data-activity-tooltip
-          class="pointer-events-none fixed z-20 hidden w-72 rounded-md border border-line bg-[#fffaf4] p-4 shadow-soft"
+          class="pointer-events-none fixed z-20 hidden max-h-[calc(100svh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-72 overflow-y-auto rounded-md border border-line bg-[#fffaf4] p-4 shadow-soft"
         ></div>
       </section>
       <div
         data-photo-lightbox
-        class="fixed inset-0 z-30 hidden items-center justify-center bg-ink/90 p-4"
+        class="fixed inset-0 z-40 hidden items-center justify-center bg-ink/95 p-3 sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-label="Activity photo viewer"
@@ -408,7 +411,7 @@ class StravaWidget extends HTMLElement {
           type="button"
           data-close-lightbox
           aria-label="Close photo viewer"
-          class="absolute right-4 top-4 text-white/80 transition hover:text-white"
+          class="absolute right-3 top-3 text-white/80 transition hover:text-white sm:right-4 sm:top-4"
         >
           <i data-lucide="x" class="h-7 w-7"></i>
         </button>
@@ -416,7 +419,7 @@ class StravaWidget extends HTMLElement {
           type="button"
           data-lightbox-prev
           aria-label="Previous photo"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 transition hover:text-white"
+          class="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-ink/45 text-white/85 backdrop-blur transition hover:text-white sm:left-4"
         >
           <i data-lucide="chevron-left" class="h-8 w-8"></i>
         </button>
@@ -424,13 +427,13 @@ class StravaWidget extends HTMLElement {
           data-lightbox-image
           src=""
           alt=""
-          class="max-h-full max-w-full rounded-md object-contain"
+          class="max-h-[calc(100svh-4rem)] max-w-full rounded-md object-contain sm:max-h-full"
         />
         <button
           type="button"
           data-lightbox-next
           aria-label="Next photo"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 transition hover:text-white"
+          class="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-ink/45 text-white/85 backdrop-blur transition hover:text-white sm:right-4"
         >
           <i data-lucide="chevron-right" class="h-8 w-8"></i>
         </button>
