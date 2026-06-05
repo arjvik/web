@@ -43,6 +43,8 @@ jobs:
 
       - name: Build static site
         run: node scripts/build-site.mjs
+        env:
+          COMMUTE_LOG_TOKEN: ${{ secrets.COMMUTE_LOG_TOKEN }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

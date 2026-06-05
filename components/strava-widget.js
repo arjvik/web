@@ -44,7 +44,11 @@ function sportLabel(type) {
   return sportMeta[normalizedSport(type)]?.label ?? type ?? "Activity";
 }
 
-function calendarState(date, dayActivities, activityDates) {
+function calendarState(date, dayActivities, activityDates, commuteDates) {
+  if (commuteDates.has(isoDate(date))) {
+    return "commute";
+  }
+
   if (dayActivities.length) {
     return "active";
   }
@@ -53,7 +57,7 @@ function calendarState(date, dayActivities, activityDates) {
   return activityDates.has(previousDay) ? "recovery" : "none";
 }
 
-function renderCalendar(root, activities, asOf) {
+function renderCalendar(root, activities, commutes, asOf) {
   const grid = root.querySelector("[data-calendar-grid]");
   const monthRow = root.querySelector("[data-calendar-months]");
   const rangeStart = startOfYear(asOf);
@@ -62,6 +66,7 @@ function renderCalendar(root, activities, asOf) {
   const weekCount = Math.round((calendarEnd - calendarStart) / dayMs / 7) + 1;
   const activityMap = new Map();
   const activityDates = new Set(activities.map((activity) => activity.date));
+  const commuteDates = new Set(commutes.map((commute) => commute.date));
 
   activities.forEach((activity) => {
     if (!activityMap.has(activity.date)) {
@@ -80,21 +85,28 @@ function renderCalendar(root, activities, asOf) {
     const cell = document.createElement("div");
     const inRange = date >= rangeStart && date <= asOf;
     const dayActivities = inRange ? activityMap.get(currentIso) ?? [] : [];
-    const state = calendarState(date, dayActivities, activityDates);
+    const hasCommute = inRange && commuteDates.has(currentIso);
+    const state = calendarState(date, dayActivities, activityDates, commuteDates);
 
     cell.className = `calendar-cell ${inRange ? `activity-${state}` : "calendar-outside"} ${
       dayActivities.length ? "cursor-pointer" : ""
     }`;
     cell.dataset.date = currentIso;
     cell.dataset.hasActivity = String(dayActivities.length > 0);
+    cell.dataset.hasCommute = String(hasCommute);
     if (dayActivities.length) {
       cell.tabIndex = 0;
     }
     if (inRange) {
+      const activityLabel = `${dayActivities.length} activit${dayActivities.length === 1 ? "y" : "ies"}`;
       cell.setAttribute(
         "aria-label",
-        dayActivities.length
-          ? `${formatDate(currentIso)} - ${dayActivities.length} activit${dayActivities.length === 1 ? "y" : "ies"}`
+        dayActivities.length && hasCommute
+          ? `${formatDate(currentIso)} - commute and ${activityLabel}`
+          : dayActivities.length
+          ? `${formatDate(currentIso)} - ${activityLabel}`
+          : hasCommute
+          ? `${formatDate(currentIso)} - commute`
           : `${formatDate(currentIso)} - no activity`,
       );
     }
@@ -374,6 +386,10 @@ class StravaWidget extends HTMLElement {
                 <span class="h-3 w-3 rounded-sm activity-active"></span>
                 Active
               </span>
+              <span class="inline-flex items-center gap-2">
+                <span class="h-3 w-3 rounded-sm activity-commute"></span>
+                Commute
+              </span>
             </div>
           </div>
 
@@ -448,17 +464,14 @@ class StravaWidget extends HTMLElement {
 
   async loadActivities() {
     try {
-      let response = await fetch("./activities.json");
-      if (response.status === 404) {
-        response = await fetch("./activities.mock.json");
-      }
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
+      const [data, commuteData] = await Promise.all([
+        this.fetchJsonWithFallback("./activities.json", "./activities.mock.json"),
+        this.fetchJsonWithFallback("./commutes.json", "./commutes.mock.json", { optional: true }),
+      ]);
       const asOf = localDate(data.asOf);
+      const commutes = commuteData?.commutes ?? [];
       this.activities = data.activities;
+      this.commutes = commutes;
       this.activitiesByDate = new Map();
       data.activities.forEach((activity) => {
         if (!this.activitiesByDate.has(activity.date)) {
@@ -467,13 +480,30 @@ class StravaWidget extends HTMLElement {
         this.activitiesByDate.get(activity.date).push(activity);
       });
       renderStravaLinks(this, data.profileUrl);
-      renderCalendar(this, data.activities, asOf);
+      renderCalendar(this, data.activities, commutes, asOf);
       renderYearSummary(this, data.activities, asOf);
       lucide.createIcons();
     } catch (error) {
       console.error("Unable to load activities", error);
       renderActivityError(this);
     }
+  }
+
+  async fetchJsonWithFallback(primaryUrl, fallbackUrl, { optional = false } = {}) {
+    let response = await fetch(primaryUrl);
+    if (response.status === 404) {
+      response = await fetch(fallbackUrl);
+    }
+
+    if (!response.ok) {
+      if (optional) {
+        return null;
+      }
+
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
   }
 
   bindTooltipEvents() {
