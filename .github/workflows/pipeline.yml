@@ -44,6 +44,7 @@ jobs:
       - name: Build static site
         run: node scripts/build-site.mjs
         env:
+          STRAVA_ACCESS_TOKEN: ${{ steps.strava.outputs.strava_access_token }}
           COMMUTE_LOG_TOKEN: ${{ secrets.COMMUTE_LOG_TOKEN }}
 
       - name: Configure Pages

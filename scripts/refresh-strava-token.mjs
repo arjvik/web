@@ -17,12 +17,12 @@ mask(token.refresh_token);
 
 await writeFile(tokenPath, token.refresh_token, { mode: 0o600 });
 
-if (process.env.GITHUB_ENV) {
-  await writeFile(process.env.GITHUB_ENV, `STRAVA_ACCESS_TOKEN=${token.access_token}\n`, { flag: "a" });
-}
-
 if (process.env.GITHUB_OUTPUT) {
-  await writeFile(process.env.GITHUB_OUTPUT, `refresh_token_path=${tokenPath}\n`, { flag: "a" });
+  await writeFile(
+    process.env.GITHUB_OUTPUT,
+    `refresh_token_path=${tokenPath}\nstrava_access_token=${token.access_token}\n`,
+    { flag: "a" },
+  );
 }
 
 function readArgument(name) {
