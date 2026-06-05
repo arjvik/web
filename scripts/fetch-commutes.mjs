@@ -7,6 +7,8 @@ const defaultIssueNumber = 1;
 const githubApiVersion = "2026-03-10";
 const dayMs = 24 * 60 * 60 * 1000;
 const localTimeZone = "America/Los_Angeles";
+const rfc2822TimestampPattern =
+  /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s+\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?\s+[+-]\d{4}$/i;
 
 export async function fetchCommutes({
   token,
@@ -92,13 +94,7 @@ function commuteLines(body) {
 }
 
 function normalizeCommute(timestamp, currentYear, cutoff) {
-  const dateMatch = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!dateMatch) {
-    return null;
-  }
-
-  const year = Number(dateMatch[1]);
-  if (year !== currentYear) {
+  if (!rfc2822TimestampPattern.test(timestamp)) {
     return null;
   }
 
@@ -107,8 +103,14 @@ function normalizeCommute(timestamp, currentYear, cutoff) {
     return null;
   }
 
+  const date = formatLocalDate(instant);
+  const year = Number(date.slice(0, 4));
+  if (year !== currentYear) {
+    return null;
+  }
+
   return {
-    date: `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`,
+    date,
   };
 }
 
